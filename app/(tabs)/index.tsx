@@ -1,98 +1,320 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-export default function HomeScreen() {
+import { LocationSetupBanner, type LocationSource } from '@/components/prayer/LocationSetupBanner';
+import { PrayerRow } from '@/components/prayer/PrayerRow';
+import { ProgressRing } from '@/components/prayer/ProgressRing';
+import { Brand } from '@/constants/theme';
+import { usePrayerDay } from '@/hooks/usePrayerDay';
+import type { Madhhab, Prayer } from '@/lib/api';
+import { api } from '@/lib/api';
+import {
+  fetchPrayerTimesByCity,
+  fetchPrayerTimesByCoords,
+  formatPrayerTime,
+  type DailyPrayerTimes,
+} from '@/lib/prayerTimes';
+import { getOrCreateSession, type DeviceSession } from '@/lib/session';
+
+const PRAYER_ORDER: Prayer[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+const PLACEHOLDER_TIME = '--:--';
+
+// Until onboarding/auth exists (a later day), madhhab + calculation method
+// use the same defaults as the Profile model rather than a saved profile.
+const DEFAULT_MADHHAB: Madhhab = 'hanafi';
+const DEFAULT_CALCULATION_METHOD = 2;
+
+function formatDateHeader(date: Date): { weekday: string; full: string } {
+  const weekday = date.toLocaleDateString(undefined, { weekday: 'long' });
+  const full = date.toLocaleDateString(undefined, {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return { weekday, full };
+}
+
+type ConnectionState = 'checking' | 'connected' | 'unreachable';
+type PrayerTimesState =
+  | { status: 'unresolved' } // no location set yet
+  | { status: 'loading' }
+  | { status: 'loaded'; times: DailyPrayerTimes }
+  | { status: 'error'; message: string };
+
+export default function SoloHomeScreen() {
+  // Today's date, pulled from the device — never hardcoded.
+  const [today] = useState(() => new Date());
+  const [connection, setConnection] = useState<ConnectionState>('checking');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [location, setLocation] = useState<LocationSource | null>(null);
+  const [prayerTimes, setPrayerTimes] = useState<PrayerTimesState>({ status: 'unresolved' });
+
+  // Device session (see lib/session.ts — temporary stand-in for real
+  // sign-up/login, which doesn't exist until a later day).
+  const [session, setSession] = useState<DeviceSession | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+
+  // Shared with the day-detail screen (app/day/[date].tsx) reached from
+  // the calendar — same load/tap/persist logic, just a different date.
+  const { statuses, loadError, syncError, toggleDone, markLate, reload } = usePrayerDay(
+    today,
+    session
+  );
+
+  const checkConnection = useCallback(async () => {
+    try {
+      const result = await api.health();
+      setConnection(result.status === 'ok' ? 'connected' : 'unreachable');
+    } catch {
+      setConnection('unreachable');
+    }
+  }, []);
+
+  useEffect(() => {
+    checkConnection();
+  }, [checkConnection]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setSession(await getOrCreateSession());
+      } catch (err) {
+        setSessionError(
+          err instanceof Error ? err.message : 'Could not connect your account. Pull to retry.'
+        );
+      }
+    })();
+  }, []);
+
+  const loadPrayerTimes = useCallback(async (source: LocationSource) => {
+    setPrayerTimes({ status: 'loading' });
+    try {
+      const times =
+        source.type === 'coords'
+          ? await fetchPrayerTimesByCoords({
+              latitude: source.coords.latitude,
+              longitude: source.coords.longitude,
+              calculationMethod: DEFAULT_CALCULATION_METHOD,
+              madhhab: DEFAULT_MADHHAB,
+            })
+          : await fetchPrayerTimesByCity({
+              city: source.city,
+              country: source.country,
+              calculationMethod: DEFAULT_CALCULATION_METHOD,
+              madhhab: DEFAULT_MADHHAB,
+            });
+      setPrayerTimes({ status: 'loaded', times });
+    } catch (err) {
+      setPrayerTimes({
+        status: 'error',
+        message: err instanceof Error ? err.message : 'Could not load prayer times.',
+      });
+    }
+  }, []);
+
+  const handleLocationResolved = useCallback(
+    (source: LocationSource) => {
+      setLocation(source);
+      loadPrayerTimes(source);
+    },
+    [loadPrayerTimes]
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await checkConnection();
+    if (location) {
+      await loadPrayerTimes(location);
+    }
+    await reload();
+    setRefreshing(false);
+  }, [checkConnection, loadPrayerTimes, location, reload]);
+
+  const timeFor = (prayer: Prayer): string => {
+    if (prayerTimes.status === 'loaded') {
+      return formatPrayerTime(prayerTimes.times[prayer]);
+    }
+    return PLACEHOLDER_TIME;
+  };
+
+  const trackedCount = PRAYER_ORDER.filter((p) => statuses[p] !== 'unmarked').length;
+  const { weekday, full } = formatDateHeader(today);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+      {/* ---- Date header ---- */}
+      <View style={styles.dateHeader}>
+        <Text style={styles.eyebrow}>today</Text>
+        <Text style={styles.weekday}>{weekday}</Text>
+        <Text style={styles.fullDate}>{full}</Text>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* ---- Connection status (proves live API loading, not hardcoded data) ---- */}
+      <View style={styles.statusRow}>
+        {connection === 'checking' && (
+          <>
+            <ActivityIndicator size="small" color={Brand.muted} />
+            <Text style={styles.statusText}>Connecting to server…</Text>
+          </>
+        )}
+        {connection === 'connected' && (
+          <>
+            <View style={[styles.statusDot, { backgroundColor: Brand.accent }]} />
+            <Text style={styles.statusText}>Connected to live API</Text>
+          </>
+        )}
+        {connection === 'unreachable' && (
+          <>
+            <View style={[styles.statusDot, { backgroundColor: Brand.muted }]} />
+            <Text style={styles.statusText}>Server unreachable — pull to retry</Text>
+          </>
+        )}
+      </View>
+
+      {sessionError && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{sessionError}</Text>
+        </View>
+      )}
+      {loadError && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{loadError}</Text>
+        </View>
+      )}
+      {syncError && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{syncError}</Text>
+        </View>
+      )}
+
+      {/* ---- Location banner: non-blocking per the spec's edge-case rules ---- */}
+      {!location && <LocationSetupBanner onLocationResolved={handleLocationResolved} />}
+      {prayerTimes.status === 'error' && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{prayerTimes.message}</Text>
+        </View>
+      )}
+      {prayerTimes.status === 'loading' && (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator size="small" color={Brand.muted} />
+          <Text style={styles.statusText}>Calculating today&apos;s prayer times…</Text>
+        </View>
+      )}
+
+      {/* ---- Progress summary card ---- */}
+      <View style={styles.ringCard}>
+        <ProgressRing completed={trackedCount} total={PRAYER_ORDER.length} />
+      </View>
+
+      {/* ---- Prayer list ---- */}
+      <View style={styles.prayerShell}>
+        {PRAYER_ORDER.map((prayer, index) => (
+          <PrayerRow
+            key={prayer}
+            prayer={prayer}
+            time={timeFor(prayer)}
+            status={statuses[prayer]}
+            badge={index === 1 ? 'Now' : undefined}
+            onPress={() => toggleDone(prayer)}
+            onLongPress={() => markLate(prayer)}
+          />
+        ))}
+      </View>
+
+      {/* ---- Link to calendar/history view ---- */}
+      <Link href="/history" style={styles.historyLink}>
+        View calendar →
+      </Link>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  screen: {
+    flex: 1,
+    backgroundColor: Brand.paper,
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingTop: 72,
+    paddingBottom: 48,
+  },
+  dateHeader: {
+    marginBottom: 28,
+  },
+  eyebrow: {
+    fontSize: 12,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    color: Brand.accent,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  weekday: {
+    fontSize: 34,
+    fontWeight: '600',
+    color: Brand.ink,
+    marginBottom: 4,
+  },
+  fullDate: {
+    fontSize: 15,
+    color: Brand.muted,
+  },
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 28,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: Brand.paperDeep,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
   },
-  stepContainer: {
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 13,
+    color: Brand.muted,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 20,
+  },
+  errorBanner: {
+    backgroundColor: Brand.paperDeep,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 20,
+  },
+  errorBannerText: {
+    fontSize: 13,
+    color: Brand.muted,
+  },
+  ringCard: {
+    alignItems: 'center',
+    paddingVertical: 24,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  prayerShell: {
+    borderTopWidth: 1,
+    borderTopColor: Brand.line,
+  },
+  historyLink: {
+    marginTop: 24,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    color: Brand.accent,
   },
 });
