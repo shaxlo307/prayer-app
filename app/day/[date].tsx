@@ -1,21 +1,27 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Redirect, useLocalSearchParams } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { PrayerRow } from '@/components/prayer/PrayerRow';
-import { Brand } from '@/constants/theme';
-import type { Prayer } from '@/lib/api';
-import { parseISODate } from '@/lib/calendar';
-import { getOrCreateSession, type DeviceSession } from '@/lib/session';
-import { usePrayerDay } from '@/hooks/usePrayerDay';
+import { PrayerRow } from "@/components/prayer/PrayerRow";
+import { Brand } from "@/constants/theme";
+import { usePrayerDay } from "@/hooks/usePrayerDay";
+import type { Prayer } from "@/lib/api";
+import { parseISODate } from "@/lib/calendar";
+import { getOrCreateSession, type DeviceSession } from "@/lib/session";
 
-const PRAYER_ORDER: Prayer[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+const PRAYER_ORDER: Prayer[] = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
 
 const DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-  year: 'numeric',
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
 });
 
 export default function DayDetailScreen() {
@@ -26,6 +32,16 @@ export default function DayDetailScreen() {
   // would churn their identities for no reason.
   const date = useMemo(() => parseISODate(dateParam), [dateParam]);
 
+  // Guard: invalid date string or future date → redirect to home.
+  // MonthCalendar disables future taps but deep links bypass that check.
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const isInvalid = isNaN(date.getTime());
+  const isFuture = !isInvalid && date > today;
+
   const [session, setSession] = useState<DeviceSession | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
@@ -34,26 +50,35 @@ export default function DayDetailScreen() {
       try {
         setSession(await getOrCreateSession());
       } catch (err) {
-        setSessionError(err instanceof Error ? err.message : 'Could not connect your account.');
+        setSessionError(
+          err instanceof Error
+            ? err.message
+            : "Could not connect your account.",
+        );
       }
     })();
   }, []);
 
-  const { statuses, loading, loadError, syncError, toggleDone, markLate } = usePrayerDay(
-    date,
-    session
-  );
+  const { statuses, loading, loadError, syncError, toggleDone, markLate } =
+    usePrayerDay(date, session);
+
+  if (isInvalid || isFuture) {
+    return <Redirect href="/" />;
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.dateHeader}>{DATE_FORMATTER.format(date)}</Text>
       <Text style={styles.subtext}>
-        Editing this day updates your record — useful for backfilling a day you forgot to log.
+        Editing this day updates your record — useful for backfilling a day you
+        forgot to log.
       </Text>
 
       {(sessionError || loadError || syncError) && (
         <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{sessionError ?? loadError ?? syncError}</Text>
+          <Text style={styles.errorBannerText}>
+            {sessionError ?? loadError ?? syncError}
+          </Text>
         </View>
       )}
 
@@ -89,7 +114,7 @@ const styles = StyleSheet.create({
   },
   dateHeader: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Brand.ink,
     marginBottom: 6,
   },
@@ -99,8 +124,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 20,
   },

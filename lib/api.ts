@@ -75,11 +75,24 @@ async function request<T>(
     headers["Authorization"] = `Basic ${encoded}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: options.method ?? "GET",
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiError(0, "Request timed out after 10 seconds");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const isJson = response.headers
     .get("content-type")

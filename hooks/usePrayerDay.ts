@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
-import type { Prayer, PrayerLogEntry, PrayerStatus } from '@/lib/api';
-import { toISODate } from '@/lib/calendar';
-import { loadTodayLogs, syncPrayerStatus, type TodayLogsByPrayer } from '@/lib/prayerLogSync';
-import type { DeviceSession } from '@/lib/session';
+import type { Prayer, PrayerLogEntry, PrayerStatus } from "@/lib/api";
+import { toISODate } from "@/lib/calendar";
+import {
+  loadTodayLogs,
+  syncPrayerStatus,
+  type TodayLogsByPrayer,
+} from "@/lib/prayerLogSync";
+import type { DeviceSession } from "@/lib/session";
 
-const PRAYER_ORDER: Prayer[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+const PRAYER_ORDER: Prayer[] = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
 
 const EMPTY_STATUSES: Record<Prayer, PrayerStatus> = {
-  fajr: 'unmarked',
-  dhuhr: 'unmarked',
-  asr: 'unmarked',
-  maghrib: 'unmarked',
-  isha: 'unmarked',
+  fajr: "unmarked",
+  dhuhr: "unmarked",
+  asr: "unmarked",
+  maghrib: "unmarked",
+  isha: "unmarked",
 };
 
 export interface UsePrayerDayResult {
@@ -32,7 +36,10 @@ export interface UsePrayerDayResult {
  * date reached from the calendar), so both get identical persistence and
  * optimistic-update behavior instead of two copies of the same logic.
  */
-export function usePrayerDay(date: Date, session: DeviceSession | null): UsePrayerDayResult {
+export function usePrayerDay(
+  date: Date,
+  session: DeviceSession | null,
+): UsePrayerDayResult {
   const [logs, setLogs] = useState<TodayLogsByPrayer>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -42,18 +49,23 @@ export function usePrayerDay(date: Date, session: DeviceSession | null): UsePray
   const dateKey = date.toDateString(); // stable dependency for effects below
 
   const reload = useCallback(async () => {
-    if (!session) return;
+    if (!session) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const fetched = await loadTodayLogs(
         { username: session.username, password: session.password },
-        date
+        date,
       );
       setLogs(fetched);
       setLoadError(null);
     } catch (err) {
       setLoadError(
-        err instanceof Error ? err.message : 'Could not load this day. Pull to retry.'
+        err instanceof Error
+          ? err.message
+          : "Could not load this day. Pull to retry.",
       );
     } finally {
       setLoading(false);
@@ -81,8 +93,8 @@ export function usePrayerDay(date: Date, session: DeviceSession | null): UsePray
             date: toISODate(date), // local-date-safe — NOT toISOString(), which is UTC
             prayer,
             status: nextStatus,
-            created_at: '',
-            updated_at: '',
+            created_at: "",
+            updated_at: "",
           };
       setLogs((prev) => ({ ...prev, [prayer]: optimisticLog }));
 
@@ -106,7 +118,9 @@ export function usePrayerDay(date: Date, session: DeviceSession | null): UsePray
           }
           return rolledBack;
         });
-        setSyncError(`Couldn't save ${prayer}. Check your connection and try again.`);
+        setSyncError(
+          `Couldn't save ${prayer}. Check your connection and try again.`,
+        );
       } finally {
         setPendingPrayers((prev) => {
           const next = new Set(prev);
@@ -115,23 +129,37 @@ export function usePrayerDay(date: Date, session: DeviceSession | null): UsePray
         });
       }
     },
-    [date, logs, pendingPrayers, session]
+    [date, logs, pendingPrayers, session],
   );
 
   const toggleDone = useCallback(
     (prayer: Prayer) => {
-      const current = logs[prayer]?.status ?? 'unmarked';
-      changeStatus(prayer, current === 'unmarked' ? 'done' : 'unmarked');
+      const current = logs[prayer]?.status ?? "unmarked";
+      changeStatus(prayer, current === "unmarked" ? "done" : "unmarked");
     },
-    [changeStatus, logs]
+    [changeStatus, logs],
   );
 
-  const markLate = useCallback((prayer: Prayer) => changeStatus(prayer, 'late'), [changeStatus]);
+  const markLate = useCallback(
+    (prayer: Prayer) => changeStatus(prayer, "late"),
+    [changeStatus],
+  );
 
   const statuses: Record<Prayer, PrayerStatus> = {
     ...EMPTY_STATUSES,
-    ...Object.fromEntries(PRAYER_ORDER.map((p) => [p, logs[p]?.status ?? 'unmarked'])),
+    ...Object.fromEntries(
+      PRAYER_ORDER.map((p) => [p, logs[p]?.status ?? "unmarked"]),
+    ),
   };
 
-  return { statuses, loading, loadError, syncError, pendingPrayers, toggleDone, markLate, reload };
+  return {
+    statuses,
+    loading,
+    loadError,
+    syncError,
+    pendingPrayers,
+    toggleDone,
+    markLate,
+    reload,
+  };
 }

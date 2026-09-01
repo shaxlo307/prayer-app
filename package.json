@@ -45,29 +45,29 @@
     "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
+    "@babel/preset-flow": "^8.0.1",
+    "@react-native/jest-preset": "^0.87.1",
+    "@testing-library/react-native": "^13.0.0",
+    "@types/invariant": "^2.2.37",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.1.0",
-    "babel-plugin-module-resolver": "^5.0.3",
-    "babel-preset-expo": "^57.0.9",
+    "babel-plugin-module-resolver": "^5.0.2",
+    "babel-preset-expo": "~13.0.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
-    "jest": "^30.4.2",
+    "jest": "29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-expo": "^57.0.0",
+    "react-test-renderer": "19.1.0",
     "ts-jest": "^29.4.12",
     "typescript": "~5.9.2"
   },
-  "private": true,
   "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/$1"
-    },
     "projects": [
       {
         "displayName": "logic",
         "testMatch": [
-          "<rootDir>/lib/**/*.test.ts",
-          "<rootDir>/hooks/**/*.test.ts"
+          "<rootDir>/lib/**/*.test.ts"
         ],
         "preset": "ts-jest",
         "testEnvironment": "node",
@@ -76,23 +76,41 @@
         },
         "transformIgnorePatterns": [
           "node_modules/(?!(expo-secure-store|expo-location)/)"
-        ]
+        ],
+        "globals": {
+          "ts-jest": {
+            "tsconfig": "<rootDir>/tsconfig.test.json"
+          }
+        }
       },
       {
-        "displayName": "components",
+        "displayName": "hooks+components",
         "testMatch": [
+          "<rootDir>/hooks/**/*.test.ts",
+          "<rootDir>/hooks/**/*.test.tsx",
           "<rootDir>/components/**/*.test.tsx",
           "<rootDir>/__tests__/**/*.test.tsx"
         ],
-        "preset": "ts-jest",
-        "testEnvironment": "jsdom",
+        "preset": "jest-expo",
         "moduleNameMapper": {
-          "^@/(.*)$": "<rootDir>/$1"
+          "^@/(.*)$": "<rootDir>/$1",
+          "^react-native/setup-env$": "<rootDir>/node_modules/react-native/jest/local-setup.js",
+          "^@expo/vector-icons(.*)?$": "<rootDir>/__mocks__/@expo/vector-icons.js"
         },
         "transformIgnorePatterns": [
-          "node_modules/(?!(expo-secure-store|expo-location|expo-router|@expo/vector-icons|react-native-svg)/)"
-        ]
+          "node_modules/(?!(jest-)?react-native|@react-native(-community)?|@react-native/.*|react-clone-referenced-element|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|@sentry/.*|@testing-library/.*)"
+        ],
+        "transform": {
+          "^.+\\.tsx?$": [
+            "ts-jest",
+            {
+              "tsconfig": "<rootDir>/tsconfig.test.json"
+            }
+          ],
+          "^.+\\.js$": "<rootDir>/jest-flow-strip-transform.js"
+        }
       }
     ]
-  }
+  },
+  "private": true
 }
