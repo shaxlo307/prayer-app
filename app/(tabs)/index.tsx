@@ -212,6 +212,8 @@ export default function SoloHomeScreen() {
 
   return (
     <ScrollView
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
       style={styles.screen}
       contentContainerStyle={styles.content}
       refreshControl={
@@ -315,6 +317,11 @@ export default function SoloHomeScreen() {
       {/* ---- Link to calendar/history view ---- */}
       <Link href="/history" style={styles.historyLink}>
         View calendar →
+      </Link>
+
+      {/* ---- Day 13: link to the qada setup flow ---- */}
+      <Link href="/qada-setup" style={styles.historyLink}>
+        Set up qada tracking →
       </Link>
     </ScrollView>
   );

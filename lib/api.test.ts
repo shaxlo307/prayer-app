@@ -63,6 +63,67 @@ describe("api.createProfile", () => {
   });
 });
 
+describe("api.updateProfile", () => {
+  it("PATCHes the profile at its id with the given fields and auth", async () => {
+    mockFetchOnce(200, {
+      id: 5,
+      birth_date: "2000-01-15",
+      bulugh_age: 12,
+      gender: "male",
+      practice_start_date: "2015-06-01",
+    });
+
+    await api.updateProfile(
+      5,
+      {
+        birth_date: "2000-01-15",
+        bulugh_age: 12,
+        gender: "male",
+        practice_start_date: "2015-06-01",
+      },
+      { username: "device-abc", password: "secret" },
+    );
+
+    const call = (fetch as jest.Mock).mock.calls[0];
+    expect(call[0]).toContain("/api/profiles/5/");
+    const options = call[1];
+    expect(options.method).toBe("PATCH");
+    expect(options.headers.Authorization).toBe(
+      `Basic ${btoa("device-abc:secret")}`,
+    );
+    expect(JSON.parse(options.body)).toEqual({
+      birth_date: "2000-01-15",
+      bulugh_age: 12,
+      gender: "male",
+      practice_start_date: "2015-06-01",
+    });
+  });
+
+  it("returns the updated profile on success", async () => {
+    mockFetchOnce(200, { id: 5, bulugh_age: 13 });
+
+    const result = await api.updateProfile(
+      5,
+      { bulugh_age: 13 },
+      { username: "a", password: "b" },
+    );
+
+    expect(result.bulugh_age).toBe(13);
+  });
+
+  it("propagates a validation error (e.g. bad gender) as ApiError", async () => {
+    mockFetchOnce(400, { gender: ["Not a valid choice."] });
+
+    await expect(
+      api.updateProfile(
+        5,
+        { gender: "other" as never },
+        { username: "a", password: "b" },
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+});
+
 describe("api.createPrayerLog", () => {
   it("propagates a 400 (e.g. duplicate prayer for the day) as ApiError", async () => {
     mockFetchOnce(400, { non_field_errors: ["must make a unique set"] });

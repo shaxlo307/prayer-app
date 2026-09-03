@@ -131,6 +131,23 @@ export const api = {
     auth: RequestOptions["auth"],
   ) => request<Profile>("/api/profiles/", { method: "POST", body, auth }),
 
+  /**
+   * Day 13: qada setup (birth date, bulugh age, gender, practice start
+   * date) is saved via PATCH against the existing self profile — no new
+   * backend schema needed, these fields already existed on Profile since
+   * the Day 7.5 reconciliation.
+   */
+  updateProfile: (
+    id: number,
+    body: Partial<Profile>,
+    auth: RequestOptions["auth"],
+  ) =>
+    request<Profile>(`/api/profiles/${id}/`, {
+      method: "PATCH",
+      body,
+      auth,
+    }),
+
   listPrayerLogs: (auth: RequestOptions["auth"]) =>
     request<PrayerLogEntry[]>("/api/prayer-logs/", { auth }),
 

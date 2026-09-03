@@ -67,7 +67,12 @@ export default function DayDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+    >
       <Text style={styles.dateHeader}>{DATE_FORMATTER.format(date)}</Text>
       <Text style={styles.subtext}>
         Editing this day updates your record — useful for backfilling a day you

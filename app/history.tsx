@@ -128,7 +128,12 @@ export default function HistoryScreen() {
   );
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+    >
       {loading && (
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color={Brand.muted} />
