@@ -17,16 +17,25 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Prayer",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+            <IconSymbol size={26} name="moon.stars.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: "History",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={26} name="calendar" color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
-          href: null, // hides the Explore tab without breaking the file reference
+          href: null,
         }}
       />
     </Tabs>

@@ -2,6 +2,7 @@ import { Link } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -37,11 +38,19 @@ type ScreenState =
  * fresh qada setup with no QadaDebt rows), this screen triggers the
  * calculation itself via `calculateQadaDebt` rather than showing an empty
  * state — closing the setup-to-tracker loop in one visit.
+ *
+ * Day 16: each prayer row also has a "Log a qada [prayer]" button —
+ * choosing which prayer type IS the action, per the spec ("choose which
+ * prayer type, debt count decrements by 1"), so no separate picker is
+ * needed. Logging updates that row's progress bar immediately from the
+ * response's `debt` object, without waiting on a second fetch.
  */
 export default function QadaTrackerScreen() {
   const [session, setSession] = useState<DeviceSession | null>(null);
   const [state, setState] = useState<ScreenState>({ status: "loading" });
   const [refreshing, setRefreshing] = useState(false);
+  const [loggingPrayer, setLoggingPrayer] = useState<Prayer | null>(null);
+  const [logError, setLogError] = useState<string | null>(null);
 
   const load = useCallback(async (activeSession: DeviceSession) => {
     try {
@@ -104,6 +113,38 @@ export default function QadaTrackerScreen() {
     setRefreshing(false);
   }, [session, load]);
 
+  const handleLogPrayer = useCallback(
+    async (prayer: Prayer) => {
+      if (!session) return;
+      setLogError(null);
+      setLoggingPrayer(prayer);
+      try {
+        const result = await api.logQadaPrayer(session.profileId, prayer, {
+          username: session.username,
+          password: session.password,
+        });
+        // Update just this row from the response — no need to refetch
+        // everything, and it lands on screen immediately.
+        setState((prev) =>
+          prev.status === "ready"
+            ? { status: "ready", rows: { ...prev.rows, [prayer]: result.debt } }
+            : prev,
+        );
+      } catch (err) {
+        setLogError(
+          err instanceof ApiError && err.body && typeof err.body === "object" && "detail" in err.body
+            ? String((err.body as { detail: unknown }).detail)
+            : err instanceof Error
+              ? err.message
+              : "Could not log that prayer.",
+        );
+      } finally {
+        setLoggingPrayer(null);
+      }
+    },
+    [session],
+  );
+
   if (state.status === "loading") {
     return (
       <View style={styles.screen}>
@@ -163,6 +204,12 @@ export default function QadaTrackerScreen() {
         tally to feel bad about.
       </Text>
 
+      {logError && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{logError}</Text>
+        </View>
+      )}
+
       <View style={styles.overallCard}>
         <QadaProgressBar
           label="Overall"
@@ -176,12 +223,32 @@ export default function QadaTrackerScreen() {
           const row = state.rows[prayer];
           if (!row) return null;
           return (
-            <QadaProgressBar
-              key={prayer}
-              label={PRAYER_LABELS[prayer]}
-              initialCount={row.initial_count}
-              remainingCount={row.remaining_count}
-            />
+            <View key={prayer} style={styles.prayerBlock}>
+              <QadaProgressBar
+                label={PRAYER_LABELS[prayer]}
+                initialCount={row.initial_count}
+                remainingCount={row.remaining_count}
+              />
+              {row.remaining_count > 0 && (
+                <Pressable
+                  onPress={() => handleLogPrayer(prayer)}
+                  disabled={loggingPrayer !== null}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.logButton,
+                    pressed && styles.logButtonPressed,
+                  ]}
+                >
+                  {loggingPrayer === prayer ? (
+                    <ActivityIndicator size="small" color={Brand.accent} />
+                  ) : (
+                    <Text style={styles.logButtonText}>
+                      Log a qada {PRAYER_LABELS[prayer]}
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+            </View>
           );
         })}
       </View>
@@ -249,5 +316,25 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Brand.line,
     paddingTop: 20,
+  },
+  prayerBlock: {
+    marginBottom: 4,
+  },
+  logButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Brand.accent,
+    marginBottom: 18,
+  },
+  logButtonPressed: {
+    opacity: 0.7,
+  },
+  logButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Brand.accent,
   },
 });

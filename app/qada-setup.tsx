@@ -172,6 +172,7 @@ export default function QadaSetupScreen() {
           placeholderTextColor={Brand.muted}
           value={birthDate}
           onChangeText={setBirthDate}
+          keyboardType="numeric"
           accessibilityLabel="Birth date"
         />
         {fieldErrors.birthDate && (
@@ -262,6 +263,7 @@ export default function QadaSetupScreen() {
           placeholderTextColor={Brand.muted}
           value={practiceStartDate}
           onChangeText={setPracticeStartDate}
+          keyboardType="numeric"
           accessibilityLabel="Practice start date"
         />
         {fieldErrors.practiceStartDate && (

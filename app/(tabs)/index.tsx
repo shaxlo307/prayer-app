@@ -1,4 +1,3 @@
-import { Link } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -313,21 +312,6 @@ export default function SoloHomeScreen() {
           />
         ))}
       </View>
-
-      {/* ---- Link to calendar/history view ---- */}
-      <Link href="/history" style={styles.historyLink}>
-        View calendar →
-      </Link>
-
-      {/* ---- Day 13: link to the qada setup flow ---- */}
-      <Link href="/qada-setup" style={styles.historyLink}>
-        Set up qada tracking →
-      </Link>
-
-      {/* ---- Day 15: link to the qada tracker ---- */}
-      <Link href="/qada-tracker" style={styles.historyLink}>
-        View qada tracker →
-      </Link>
     </ScrollView>
   );
 }
@@ -407,12 +391,5 @@ const styles = StyleSheet.create({
   prayerShell: {
     borderTopWidth: 1,
     borderTopColor: Brand.line,
-  },
-  historyLink: {
-    marginTop: 24,
-    textAlign: "center",
-    fontSize: 14,
-    fontWeight: "600",
-    color: Brand.accent,
   },
 });

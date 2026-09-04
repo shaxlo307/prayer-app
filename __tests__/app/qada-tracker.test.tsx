@@ -1,4 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react-native";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native";
 
 import { ApiError, api } from "@/lib/api";
 import { getOrCreateSession } from "@/lib/session";
@@ -13,13 +19,18 @@ jest.mock("@/lib/api", () => {
   const actual = jest.requireActual("@/lib/api");
   return {
     ...actual,
-    api: { listQadaDebt: jest.fn(), calculateQadaDebt: jest.fn() },
+    api: {
+      listQadaDebt: jest.fn(),
+      calculateQadaDebt: jest.fn(),
+      logQadaPrayer: jest.fn(),
+    },
   };
 });
 
 const mockGetOrCreateSession = getOrCreateSession as jest.Mock;
 const mockListQadaDebt = api.listQadaDebt as jest.Mock;
 const mockCalculateQadaDebt = api.calculateQadaDebt as jest.Mock;
+const mockLogQadaPrayer = api.logQadaPrayer as jest.Mock;
 
 const SESSION = { username: "device-abc", password: "secret", profileId: 5 };
 
@@ -53,6 +64,7 @@ describe("QadaTrackerScreen", () => {
     mockGetOrCreateSession.mockReset();
     mockListQadaDebt.mockReset();
     mockCalculateQadaDebt.mockReset();
+    mockLogQadaPrayer.mockReset();
     mockGetOrCreateSession.mockResolvedValue(SESSION);
   });
 
@@ -142,5 +154,77 @@ describe("QadaTrackerScreen", () => {
     await waitForLoaded();
 
     expect(screen.getAllByText("All caught up")).toHaveLength(6); // 5 prayers + overall
+  });
+
+  it("shows a log button for each prayer with remaining debt", async () => {
+    mockListQadaDebt.mockResolvedValue(FULL_DEBT);
+
+    await render(<QadaTrackerScreen />);
+    await waitForLoaded();
+
+    expect(screen.getByText("Log a qada Fajr")).toBeTruthy();
+    expect(screen.getByText("Log a qada Isha")).toBeTruthy();
+  });
+
+  it("hides the log button once a prayer's remaining count reaches zero", async () => {
+    mockListQadaDebt.mockResolvedValue([
+      debtRow("fajr", 300, 0),
+      debtRow("dhuhr", 300, 230),
+      debtRow("asr", 300, 230),
+      debtRow("maghrib", 300, 230),
+      debtRow("isha", 300, 230),
+    ]);
+
+    await render(<QadaTrackerScreen />);
+    await waitForLoaded();
+
+    expect(screen.queryByText("Log a qada Fajr")).toBeNull();
+    expect(screen.getByText("Log a qada Dhuhr")).toBeTruthy();
+  });
+
+  it("logging a prayer decrements only that row and updates the overall total", async () => {
+    mockListQadaDebt.mockResolvedValue(FULL_DEBT);
+    mockLogQadaPrayer.mockResolvedValue({
+      log: { id: 1, profile: 5, prayer: "fajr", logged_at: "x" },
+      debt: debtRow("fajr", 300, 229),
+    });
+
+    await render(<QadaTrackerScreen />);
+    await waitForLoaded();
+
+    await act(async () => {
+      fireEvent.press(screen.getByText("Log a qada Fajr"));
+    });
+
+    expect(mockLogQadaPrayer).toHaveBeenCalledWith(5, "fajr", {
+      username: "device-abc",
+      password: "secret",
+    });
+    await waitFor(() =>
+      expect(screen.getByText("229 remaining")).toBeTruthy(),
+    );
+    // The other 4 prayers are untouched at 230, so both counts coexist.
+    expect(screen.getAllByText("230 remaining")).toHaveLength(4);
+    // Overall was 1150, now 1149 (only fajr moved).
+    expect(screen.getByText("1,149 remaining")).toBeTruthy();
+  });
+
+  it("shows an error message if logging fails, without crediting progress", async () => {
+    mockListQadaDebt.mockResolvedValue(FULL_DEBT);
+    mockLogQadaPrayer.mockRejectedValue(
+      new ApiError(400, { detail: "No qada debt remaining for fajr." }),
+    );
+
+    await render(<QadaTrackerScreen />);
+    await waitForLoaded();
+
+    await act(async () => {
+      fireEvent.press(screen.getByText("Log a qada Fajr"));
+    });
+
+    expect(
+      screen.getByText("No qada debt remaining for fajr."),
+    ).toBeTruthy();
+    expect(screen.getAllByText("230 remaining")).toHaveLength(5); // unchanged
   });
 });

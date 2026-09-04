@@ -56,6 +56,21 @@ export interface QadaDebtEntry {
   updated_at: string;
 }
 
+export interface QadaLogEntry {
+  id: number;
+  profile: number;
+  prayer: Prayer;
+  logged_at: string;
+}
+
+/** Response shape for logging a qada prayer — includes the freshly
+ * decremented debt row so the UI can update immediately without a
+ * second round trip. */
+export interface QadaLogResult {
+  log: QadaLogEntry;
+  debt: QadaDebtEntry;
+}
+
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -182,6 +197,24 @@ export const api = {
     request<QadaDebtEntry[]>(`/api/profiles/${profileId}/calculate-qada-debt/`, {
       method: "POST",
       body: options.force ? { force: true } : undefined,
+      auth,
+    }),
+
+  /**
+   * Day 16: "log a qada prayer" — creates a QadaLog entry and atomically
+   * decrements the matching QadaDebt.remaining_count by 1 server-side.
+   * Returns both the new log and the freshly updated debt row in one
+   * response, so the tracker screen's progress bar can update immediately
+   * without a second request.
+   */
+  logQadaPrayer: (
+    profileId: number,
+    prayer: Prayer,
+    auth: RequestOptions["auth"],
+  ) =>
+    request<QadaLogResult>("/api/qada-logs/", {
+      method: "POST",
+      body: { profile: profileId, prayer },
       auth,
     }),
 

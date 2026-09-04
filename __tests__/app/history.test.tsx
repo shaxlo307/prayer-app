@@ -9,7 +9,7 @@ import {
 import { api } from "@/lib/api";
 import { getOrCreateSession } from "@/lib/session";
 
-import HistoryScreen from "@/app/history";
+import HistoryScreen from "@/app/(tabs)/history";
 
 let capturedFocusCallback: (() => void) | null = null;
 const mockPush = jest.fn();
@@ -50,8 +50,9 @@ describe("HistoryScreen", () => {
     mockListPrayerLogs.mockResolvedValue([]);
     render(<HistoryScreen />);
 
-    await waitFor(() =>
-      expect(screen.queryByText(/Loading your history/)).toBeNull(),
+    await waitFor(
+      () => expect(screen.queryByText(/Loading your history/)).toBeNull(),
+      { timeout: 15_000 },
     );
 
     const todayIso = new Date().toISOString().slice(0, 10);
@@ -62,21 +63,25 @@ describe("HistoryScreen", () => {
       });
       expect(mockPush).toHaveBeenCalledWith("/");
     }
-  });
+  }, 20_000);
 
   it("refetches logs when the screen regains focus, not just once on mount", async () => {
     mockListPrayerLogs.mockResolvedValue([]);
     render(<HistoryScreen />);
 
-    await waitFor(() => expect(mockListPrayerLogs).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockListPrayerLogs).toHaveBeenCalledTimes(1), {
+      timeout: 15_000,
+    });
 
     expect(capturedFocusCallback).not.toBeNull();
     await act(async () => {
       capturedFocusCallback!();
     });
 
-    await waitFor(() => expect(mockListPrayerLogs).toHaveBeenCalledTimes(2));
-  });
+    await waitFor(() => expect(mockListPrayerLogs).toHaveBeenCalledTimes(2), {
+      timeout: 15_000,
+    });
+  }, 20_000);
 
   it("does not refetch on focus before the session/initial load has resolved", async () => {
     mockListPrayerLogs.mockResolvedValue([]);

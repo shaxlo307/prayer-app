@@ -170,6 +170,31 @@ describe("api.calculateQadaDebt", () => {
   });
 });
 
+describe("api.logQadaPrayer", () => {
+  it("POSTs the profile and prayer, returning both the log and updated debt", async () => {
+    mockFetchOnce(200, {
+      log: { id: 1, profile: 5, prayer: "fajr", logged_at: "x" },
+      debt: { id: 11, profile: 5, prayer: "fajr", initial_count: 300, remaining_count: 299, updated_at: "x" },
+    });
+
+    const result = await api.logQadaPrayer(5, "fajr", { username: "a", password: "b" });
+
+    const call = (fetch as jest.Mock).mock.calls[0];
+    expect(call[0]).toContain("/api/qada-logs/");
+    expect(call[1].method).toBe("POST");
+    expect(JSON.parse(call[1].body)).toEqual({ profile: 5, prayer: "fajr" });
+    expect(result.debt.remaining_count).toBe(299);
+  });
+
+  it("propagates a 400 (e.g. no debt remaining for that prayer) as ApiError", async () => {
+    mockFetchOnce(400, { detail: "No qada debt remaining for fajr." });
+
+    await expect(
+      api.logQadaPrayer(5, "fajr", { username: "a", password: "b" }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+});
+
 describe("api.createPrayerLog", () => {
   it("propagates a 400 (e.g. duplicate prayer for the day) as ApiError", async () => {
     mockFetchOnce(400, { non_field_errors: ["must make a unique set"] });
