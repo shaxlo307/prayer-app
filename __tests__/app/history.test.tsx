@@ -1,3 +1,4 @@
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   act,
   fireEvent,
@@ -48,7 +49,7 @@ describe("HistoryScreen", () => {
 
   it("routes to the Home tab (not a duplicate day-detail screen) when today is selected", async () => {
     mockListPrayerLogs.mockResolvedValue([]);
-    render(<HistoryScreen />);
+    render(<SafeAreaProvider initialMetrics={{ insets: { top: 44, bottom: 34, left: 0, right: 0 }, frame: { x: 0, y: 0, width: 390, height: 844 } }}><HistoryScreen /></SafeAreaProvider>);
 
     await waitFor(
       () => expect(screen.queryByText(/Loading your history/)).toBeNull(),
@@ -67,7 +68,7 @@ describe("HistoryScreen", () => {
 
   it("refetches logs when the screen regains focus, not just once on mount", async () => {
     mockListPrayerLogs.mockResolvedValue([]);
-    render(<HistoryScreen />);
+    render(<SafeAreaProvider initialMetrics={{ insets: { top: 44, bottom: 34, left: 0, right: 0 }, frame: { x: 0, y: 0, width: 390, height: 844 } }}><HistoryScreen /></SafeAreaProvider>);
 
     await waitFor(() => expect(mockListPrayerLogs).toHaveBeenCalledTimes(1), {
       timeout: 15_000,
@@ -85,7 +86,7 @@ describe("HistoryScreen", () => {
 
   it("does not refetch on focus before the session/initial load has resolved", async () => {
     mockListPrayerLogs.mockResolvedValue([]);
-    render(<HistoryScreen />);
+    render(<SafeAreaProvider initialMetrics={{ insets: { top: 44, bottom: 34, left: 0, right: 0 }, frame: { x: 0, y: 0, width: 390, height: 844 } }}><HistoryScreen /></SafeAreaProvider>);
     await act(async () => {
       if (capturedFocusCallback) {
         capturedFocusCallback();

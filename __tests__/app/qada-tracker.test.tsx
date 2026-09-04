@@ -129,7 +129,7 @@ describe("QadaTrackerScreen", () => {
     await render(<QadaTrackerScreen />);
     await waitForLoaded();
 
-    expect(screen.getByText("Go to qada setup →")).toBeTruthy();
+    expect(screen.getByText("Go to qada setup")).toBeTruthy();
   });
 
   it("shows an error message for a non-400 failure", async () => {

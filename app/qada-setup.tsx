@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -27,6 +28,7 @@ import { getOrCreateSession, type DeviceSession } from "@/lib/session";
  * now. Reachable from the Home tab's "Set up qada tracking" link.
  */
 export default function QadaSetupScreen() {
+  const router = useRouter();
   const [session, setSession] = useState<DeviceSession | null>(null);
   const [madhhab, setMadhhab] = useState<Madhhab>("hanafi");
   const [loading, setLoading] = useState(true);
@@ -161,6 +163,13 @@ export default function QadaSetupScreen() {
       {saved && (
         <View style={styles.successBanner}>
           <Text style={styles.successBannerText}>Saved.</Text>
+          <Pressable
+            onPress={() => router.push("/qada-tracker")}
+            style={styles.trackerButton}
+            accessibilityRole="button"
+          >
+            <Text style={styles.trackerButtonText}>View my qada tracker →</Text>
+          </Pressable>
         </View>
       )}
 
@@ -407,5 +416,14 @@ const styles = StyleSheet.create({
     color: Brand.paper,
     fontWeight: "600",
     fontSize: 15,
+  },
+  trackerButton: {
+    marginTop: 12,
+    alignSelf: "flex-start",
+  },
+  trackerButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Brand.accent,
   },
 });

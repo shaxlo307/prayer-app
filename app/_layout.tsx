@@ -32,6 +32,10 @@ export default function RootLayout() {
           name="qada-setup"
           options={{ title: "Qada setup", headerBackTitle: "Home" }}
         />
+        <Stack.Screen
+          name="qada-tracker"
+          options={{ title: "Qada tracker", headerBackTitle: "Home" }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MonthCalendar } from "@/components/prayer/MonthCalendar";
 import { Brand } from "@/constants/theme";
@@ -22,6 +23,7 @@ const MONTH_FORMATTER = new Intl.DateTimeFormat(undefined, {
 
 export default function HistoryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [today] = useState(() => new Date());
   const [viewedYear, setViewedYear] = useState(today.getFullYear());
   const [viewedMonth, setViewedMonth] = useState(today.getMonth());
@@ -132,7 +134,7 @@ export default function HistoryScreen() {
       showsVerticalScrollIndicator={false}
       showsHorizontalScrollIndicator={false}
       style={styles.screen}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
     >
       {loading && (
         <View style={styles.loadingRow}>
@@ -181,7 +183,8 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.paper,
   },
   content: {
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
   loadingRow: {
     flexDirection: "row",

@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -46,6 +46,7 @@ type ScreenState =
  * response's `debt` object, without waiting on a second fetch.
  */
 export default function QadaTrackerScreen() {
+  const router = useRouter();
   const [session, setSession] = useState<DeviceSession | null>(null);
   const [state, setState] = useState<ScreenState>({ status: "loading" });
   const [refreshing, setRefreshing] = useState(false);
@@ -165,9 +166,13 @@ export default function QadaTrackerScreen() {
             Finish qada setup first — we need your birth date, bulugh age,
             and practice-start date to work out your prayer count.
           </Text>
-          <Link href="/qada-setup" style={styles.setupLink}>
-            Go to qada setup →
-          </Link>
+          <Pressable
+            onPress={() => router.push("/qada-setup")}
+            style={styles.setupButton}
+            accessibilityRole="button"
+          >
+            <Text style={styles.setupButtonText}>Go to qada setup</Text>
+          </Pressable>
         </View>
       </View>
     );
@@ -300,11 +305,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Brand.muted,
   },
-  setupLink: {
-    marginTop: 16,
-    fontSize: 14,
+  setupButton: {
+    marginTop: 20,
+    backgroundColor: Brand.ink,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  setupButtonText: {
+    color: Brand.paper,
     fontWeight: "600",
-    color: Brand.accent,
+    fontSize: 15,
   },
   overallCard: {
     backgroundColor: Brand.paperDeep,
