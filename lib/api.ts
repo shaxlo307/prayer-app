@@ -44,6 +44,18 @@ export interface PrayerLogEntry {
   updated_at: string;
 }
 
+export interface QadaDebtEntry {
+  id: number;
+  profile: number;
+  prayer: Prayer;
+  /** Fixed baseline computed at calculation time — used to derive percent
+   * complete (`initial_count - remaining_count`), since remaining_count
+   * alone can't show "how far along" once Day 16 starts decrementing it. */
+  initial_count: number;
+  remaining_count: number;
+  updated_at: string;
+}
+
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -145,6 +157,31 @@ export const api = {
     request<Profile>(`/api/profiles/${id}/`, {
       method: "PATCH",
       body,
+      auth,
+    }),
+
+  /**
+   * Day 14/15: reads the current qada debt across all of this account's
+   * profiles (self + any children, once family mode has UI) — the qada
+   * tracker screen filters client-side to the profile it's showing.
+   */
+  listQadaDebt: (auth: RequestOptions["auth"]) =>
+    request<QadaDebtEntry[]>("/api/qada-debt/", { auth }),
+
+  /**
+   * Day 14: computes (and stores) the initial qada debt for a profile
+   * from its qada-setup fields. Idempotent by default — a second call
+   * returns the existing rows unchanged (protects Day 16's future logged
+   * progress); pass `{ force: true }` to explicitly recompute.
+   */
+  calculateQadaDebt: (
+    profileId: number,
+    options: { force?: boolean },
+    auth: RequestOptions["auth"],
+  ) =>
+    request<QadaDebtEntry[]>(`/api/profiles/${profileId}/calculate-qada-debt/`, {
+      method: "POST",
+      body: options.force ? { force: true } : undefined,
       auth,
     }),
 

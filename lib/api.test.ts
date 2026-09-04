@@ -124,6 +124,52 @@ describe("api.updateProfile", () => {
   });
 });
 
+describe("api.listQadaDebt", () => {
+  it("returns the parsed list of debt rows", async () => {
+    mockFetchOnce(200, [
+      { id: 1, profile: 5, prayer: "fajr", initial_count: 300, remaining_count: 250, updated_at: "x" },
+    ]);
+
+    const result = await api.listQadaDebt({ username: "a", password: "b" });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].remaining_count).toBe(250);
+    const call = (fetch as jest.Mock).mock.calls[0];
+    expect(call[0]).toContain("/api/qada-debt/");
+    expect(call[1].method).toBe("GET");
+  });
+});
+
+describe("api.calculateQadaDebt", () => {
+  it("POSTs to the profile's calculate-qada-debt action with no body by default", async () => {
+    mockFetchOnce(200, [{ id: 1, profile: 5, prayer: "fajr", initial_count: 300, remaining_count: 300, updated_at: "x" }]);
+
+    await api.calculateQadaDebt(5, {}, { username: "a", password: "b" });
+
+    const call = (fetch as jest.Mock).mock.calls[0];
+    expect(call[0]).toContain("/api/profiles/5/calculate-qada-debt/");
+    expect(call[1].method).toBe("POST");
+    expect(call[1].body).toBeUndefined();
+  });
+
+  it("sends { force: true } in the body when force is requested", async () => {
+    mockFetchOnce(200, []);
+
+    await api.calculateQadaDebt(5, { force: true }, { username: "a", password: "b" });
+
+    const call = (fetch as jest.Mock).mock.calls[0];
+    expect(JSON.parse(call[1].body)).toEqual({ force: true });
+  });
+
+  it("propagates a 400 (incomplete qada setup) as ApiError", async () => {
+    mockFetchOnce(400, { detail: "Profile is missing birth_date..." });
+
+    await expect(
+      api.calculateQadaDebt(5, {}, { username: "a", password: "b" }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+});
+
 describe("api.createPrayerLog", () => {
   it("propagates a 400 (e.g. duplicate prayer for the day) as ApiError", async () => {
     mockFetchOnce(400, { non_field_errors: ["must make a unique set"] });

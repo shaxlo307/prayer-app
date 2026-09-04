@@ -323,6 +323,11 @@ export default function SoloHomeScreen() {
       <Link href="/qada-setup" style={styles.historyLink}>
         Set up qada tracking →
       </Link>
+
+      {/* ---- Day 15: link to the qada tracker ---- */}
+      <Link href="/qada-tracker" style={styles.historyLink}>
+        View qada tracker →
+      </Link>
     </ScrollView>
   );
 }
